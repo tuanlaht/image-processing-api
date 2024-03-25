@@ -1,15 +1,28 @@
 import express from 'express'
-import type { queryParam } from '../types'
-import resizeImage from '../utils'
+import path from 'path'
+import validateParamsMiddleware from '../middlewares'
+import type { QueryParam } from '../types'
+import { resizeImage, doesFileExist } from '../utils'
 
 const routes = express.Router()
 
-routes.get('/resize', (req: express.Request, res: express.Response) => {
-  const { file_name, height, width } = req.query as unknown as queryParam
+routes.get('/', (req: express.Request, res: express.Response): void => {
+  res.send(`this's api route`)
+})
 
-  console.log(resizeImage(file_name, width, height))
+routes.get('/resize', validateParamsMiddleware, async (req: express.Request, res: express.Response): Promise<void> => {
+  const { file_name, height, width } = req.query as unknown as QueryParam
+  const thumbPath = path.resolve(`./thumbs/resized-${file_name}-${width}x${height}.jpg`)
 
-  res.send(`123 ${resizeImage(file_name, width, height)}`)
+  if (doesFileExist(`resized-${file_name}-${width}x${height}`, 'thumbs')) {
+    res.sendFile(thumbPath)
+    return
+  }
+
+  const result = await resizeImage(file_name, Number(width), Number(height))
+  await result.toFile(thumbPath)
+
+  res.sendFile(thumbPath)
 })
 
 export default routes
